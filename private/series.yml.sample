@@ -1,0 +1,18 @@
+﻿series:
+  settings:
+    tvshow:
+      quality: 1080p
+      set:          
+        path: '/volume1/Downloads/Series/{{series_name}}/Season {{series_season}}'
+        content_filename: "{{series_name}} - {{series_id}}{% if proper %}-proper{% endif %}"
+        label: Series
+  tvshow:
+    - '12 Monkeys':
+        alternate_name: '12'
+    - Constantine
+    - Gotham
+    - Sleepy Hollow
+    - The Blacklist
+    - The X-Files
+    - Better Call Saul
+    - Daredevil
