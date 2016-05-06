@@ -1,0 +1,132 @@
+﻿web_server:
+  bind: 0.0.0.0
+  port: 5050
+api: yes
+webui: yes
+
+schedules:
+# Run all tasks every 30 minutes
+  - tasks: '*'
+    interval:
+      minutes: 30
+
+templates:
+  global:
+    regexp:
+      reject:
+        - (s|d)ub(s|bed)?\b: {from: title}
+        - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy
+#        - \b3-?D\b: {from: title}
+        - Blu-ray: {from: title}
+        - BDRemux: {from: title}
+        - полностью: {from: title}
+        - MP4: {from: title}
+
+  transmissionrpc:
+    transmission:
+      enabled: yes
+      host: localhost
+      port: 9091
+      username: username
+      password: password
+      addpaused: no
+      maxconnections: 30
+    clean_transmission:
+      enabled: no
+      host: localhost
+      port: 9091
+      username: username
+      password: password
+      transmission_seed_limits: yes
+ 
+  newdownload:
+    email:
+      from: test@gmail.com
+      to:
+        - test@gmail.com
+      subject: "Добавлен новый торрент"
+      smtp_host: smtp.gmail.com
+      smtp_port: 587
+      smtp_login: true
+      smtp_username: "test@gmail.com"
+      smtp_password: "asdfdsfsdfsqwe"
+      smtp_tls: true
+      template: html-downloaded.template
+
+  tv:
+    quality: 1080p
+    series:
+      settings:
+        tvshow:
+          set:          
+            path: '/volume1/Downloads/Series/{{series_name}}/Season {{series_season}}'
+            content_filename: "{{series_name}} - {{series_id}}{% if proper %}-proper{% endif %}"
+            label: Series
+      tvshow:
+        - '12 Monkeys':
+            alternate_name: '12'
+        - Constantine
+        - Gotham
+        - Sleepy Hollow
+        - The Blacklist
+        - The X-Files
+        - Better Call Saul
+        - Daredevil
+
+  movies:
+    quality: 1080p
+    imdb_lookup: yes
+    list_accept:
+      - imdb_list:
+          login: test@gmail.com
+          password: password
+          list: watchlist
+    set:
+      path: '/volume1/Downloads/Films'
+      content_filename: "{{ imdb_name|replace(' ', '.') }}"
+      label: Films
+
+tasks:
+  lostfilm:
+    priority: 1
+    headers:
+      cookie: uid=1111111; pass=11111111111111111111111111111111; usess=11111111111111111111111111111111;
+    rss: http://www.lostfilm.tv/rssdd.xml
+    urlrewrite:
+      lostfilm:
+        regexp: 'http://lostfilm.tv/download.php\?(?P<details>.*)'
+        format: 'http://www.lostfilm.tv/download.php?\g<details>'
+    template:
+      - tv
+      - newdownload
+      - transmissionrpc
+    manipulate:
+      - title:
+          replace:
+            regexp: '[^a-zA-z0-9()]+\s'
+            format: ''
+
+  Movie:
+    priority: 2
+#    seen: local  # We don't want accepted movies on this feed to affect actual download feed
+    inputs:
+      - rss: http://nnmclub.to/forum/rss2.php?f=227&uk=xxxxxxxxxx
+      - rss: http://nnmclub.to/forum/rss2.php?f=954&uk=xxxxxxxxxx
+    template:
+      - movies
+      - newdownload
+      - transmissionrpc
+    manipulate:
+      - title:
+          replace:
+            regexp: '[^a-zA-z0-9()]+\s'
+            format: ''
+
+  Want_download:
+    priority: 3
+    no_entries_ok: yes
+    rss: http://nnmclub.to/forum/rss2.php?dl=yyyyyyy&a&uk=xxxxxxxxxx
+    accept_all: yes
+    download:
+      path: /volume1/Downloads/tfiles/
+      overwrite: yes
