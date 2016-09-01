@@ -6,10 +6,10 @@ api: yes
 webui: yes
 
 schedules:
-# Run task_a and task_b every 30 minutes
+# Run all tasks once an hour
   - tasks: '*'
     interval:
-      minutes: 30
+      hours: 1
 
 templates:
   global:
@@ -96,6 +96,7 @@ tasks:
     inputs:
       - rss: '{{ secrets.nnmulrs.url1 }}'
       - rss: '{{ secrets.nnmulrs.url2 }}'
+      - rss: '{{ secrets.nnmulrs.url4 }}'
     template:
       - movies
       - newdownload
