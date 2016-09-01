@@ -104,7 +104,7 @@ tasks:
     manipulate:
       - title:
           replace:
-            regexp: '[^a-zA-z0-9()]+\s'
+            regexp: '^[^\/]+\/\s'
             format: ''
 
   Want_download:
