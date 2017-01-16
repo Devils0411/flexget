@@ -1,9 +1,8 @@
-secrets: private/secrets.yml
+variables: private/secretfile.yml
 web_server:
   bind: 0.0.0.0
   port: 5050
-api: yes
-webui: yes
+  web_ui: yes
 
 schedules:
 # Run all tasks once an hour
@@ -16,55 +15,87 @@ templates:
     regexp:
       reject:
         - (s|d)ub(s|bed)?\b: {from: title}
-        - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy
+        - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy: {from: title}
 #        - \b3-?D\b: {from: title}
         - Blu-ray: {from: title}
-        - BDRemux: {from: title}
+#        - BDRemux: {from: title}
         - полностью: {from: title}
         - MP4: {from: title}
 
-  transmissionrpc:
+  torrents:
     transmission:
       enabled: yes
-      host: '{{ secrets.transmlogin.host }}'
+      host: '{? transmlogin.host ?}'
       port: 9091
-      username: '{{ secrets.transmlogin.usr }}'
-      password: '{{ secrets.transmlogin.pwd }}'
+      username: '{? transmlogin.usr ?}'
+      password: '{? transmlogin.pwd ?}'
       addpaused: no
       maxconnections: 30
+      honourlimits: yes
     clean_transmission:
       enabled: no
-      host: '{{ secrets.transmlogin.host }}'
+      host: '{? transmlogin.host ?}'
       port: 9091
-      username: '{{ secrets.transmlogin.usr }}'
-      password: '{{ secrets.transmlogin.pwd }}'
+      username: '{? transmlogin.usr ?}'
+      password: '{? transmlogin.pwd ?}'
       transmission_seed_limits: yes
  
-  newdownload:
-    email:
-      from: '{{ secrets.emailset.addrfrom }}'
-      to:
-        - '{{ secrets.emailset.addrto }}'
-      subject: "Добавлен новый торрент"
-      smtp_host: smtp.gmail.com
-      smtp_port: 587
-      smtp_login: true
-      smtp_username: '{{ secrets.emailset.smtpusr }}'
-      smtp_password: '{{ secrets.emailset.smtppwd }}'
-      smtp_tls: true
-      template: html-downloaded.template
+  series-notify:
+    notify:
+      entries:
+        title: "Добавлена новая серия сериала: {{ tvdb_series_name }}"
+        message: "{{ tvdb_series_name|default(series_name) }} - {{ tvdb_ep_name }}{% if tvdb_ep_name|default(False) %}{% endif %} - {{ tvdb_ep_id }} [{{ quality }}]"
+        what: accepted
+        via:
+          - pushbullet:
+              api_key: '{? pushbullet.apikey ?}'
+
+  movie-notify:
+    notify:
+      entries:
+        title: "Добавлен новый фильм: {{ imdb_name }}"
+        message: "{{ imdb_name }} [{{ quality }}]"
+        what: accepted
+        via:
+          - pushbullet:
+              url: "{% if imdb_url %}{{ imdb_url }}{% endif %}"
+              api_key: '{? pushbullet.apikey ?}'
+
+  email-notify:
+    notify:
+      task:
+        title: "Добавлен новый торрент"
+        template: html-downloaded.template
+#        what: accepted
+        via:
+          - email:
+              from: '{? emailset.addrfrom ?}'
+              to:
+                - '{? emailset.addrto ?}'
+              smtp_host: smtp.gmail.com
+              smtp_port: 587
+              smtp_username: '{? emailset.smtpusr ?}'
+              smtp_password: '{? emailset.smtppwd ?}'
+              smtp_tls: true
+              html: yes
 
   tv:
+    thetvdb_lookup: yes
     include: private/series.yml
 
   movies:
+    regexp:
+      reject:
+        - webdl: {from: title}
+        - Line: {from: title}
     quality: 1080p
     imdb_lookup: yes
-    list_accept:
-      - imdb_list:
-          login: '{{ secrets.imdblogin.usr }}'
-          password: '{{ secrets.imdblogin.pwd }}'
-          list: watchlist
+    list_match:
+      from:
+        - imdb_list:
+            login: '{? imdblogin.usr ?}'
+            password: '{? imdblogin.pwd ?}'
+            list: watchlist
     set:
       path: '/volume1/Downloads/Films'
       content_filename: "{{ imdb_name|replace(' ', '.') }}"
@@ -74,16 +105,13 @@ tasks:
   lostfilm:
     priority: 1
     headers:
-      cookie: '{{ secrets.lfc.uid }}'
+      cookie: '{? lfc.uid ?}'
     rss: http://www.lostfilm.tv/rssdd.xml
     urlrewrite:
       lostfilm:
         regexp: 'http://lostfilm.tv/download.php\?(?P<details>.*)'
         format: 'http://www.lostfilm.tv/download.php?\g<details>'
-    template:
-      - tv
-      - newdownload
-      - transmissionrpc
+    template: [tv, torrents, series-notify]
     manipulate:
       - title:
           replace:
@@ -92,15 +120,11 @@ tasks:
 
   Movie:
     priority: 2
-#    seen: local  # We don't want accepted movies on this feed to affect actual download feed
     inputs:
-      - rss: '{{ secrets.nnmulrs.url1 }}'
-      - rss: '{{ secrets.nnmulrs.url2 }}'
-      - rss: '{{ secrets.nnmulrs.url4 }}'
-    template:
-      - movies
-      - newdownload
-      - transmissionrpc
+      - rss: '{? RRSUrls.url1 ?}'
+      - rss: '{? RRSUrls.url2 ?}'
+      - rss: '{? RRSUrls.url3 ?}'
+    template: [movies, torrents, movie-notify, email-notify]
     manipulate:
       - title:
           replace:
@@ -110,7 +134,7 @@ tasks:
   Want_download:
     priority: 3
     no_entries_ok: yes
-    rss: '{{ secrets.nnmulrs.url3 }}'
+    rss: '{? RRSUrls.url4 ?}'
     accept_all: yes
     download:
       path: /volume1/Downloads/tfiles/
