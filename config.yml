@@ -111,7 +111,7 @@ tasks:
       lostfilm:
         regexp: 'http://lostfilm.tv/download.php\?(?P<details>.*)'
         format: 'http://www.lostfilm.tv/download.php?\g<details>'
-    template: [tv, torrents, series-notify]
+    template: [tv, torrents, series-notify, email-notify]
     manipulate:
       - title:
           replace:
