@@ -1,4 +1,4 @@
-variables: private/secretfile.yml
+﻿variables: private/secretfile.yml
 web_server:
   bind: 0.0.0.0
   port: 5050
@@ -8,7 +8,7 @@ schedules:
 # Run all tasks once an hour
   - tasks: '*'
     interval:
-      hours: 1
+      minutes: 30
 
 templates:
   global:
@@ -18,7 +18,10 @@ templates:
         - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy: {from: title}
 #        - \b3-?D\b: {from: title}
         - Blu-ray: {from: title}
-#        - BDRemux: {from: title}
+        - BDRemux: {from: title}
+        - Remux: {from: title}
+        - AVO: {from: title}
+        - PR: {from: title}
         - полностью: {from: title}
         - MP4: {from: title}
 
@@ -29,16 +32,9 @@ templates:
       port: 9091
       username: '{? transmlogin.usr ?}'
       password: '{? transmlogin.pwd ?}'
-      addpaused: no
-      maxconnections: 30
-      honourlimits: yes
-    clean_transmission:
-      enabled: no
-      host: '{? transmlogin.host ?}'
-      port: 9091
-      username: '{? transmlogin.usr ?}'
-      password: '{? transmlogin.pwd ?}'
-      transmission_seed_limits: yes
+      add_paused: no
+      max_connections: 30
+      honor_limits: yes
  
   series-notify:
     notify:
@@ -48,6 +44,7 @@ templates:
         what: accepted
         via:
           - pushbullet:
+              url: "{% if tvdb_url %}{{ tvdb_url }}{% endif %}"
               api_key: '{? pushbullet.apikey ?}'
 
   movie-notify:
@@ -86,18 +83,25 @@ templates:
   movies:
     regexp:
       reject:
-        - webdl: {from: title}
+        - WEB-DL: {from: title}
         - Line: {from: title}
-    quality: 1080p
+#      accept:
+#        - BDRip: {from: title}
+    quality: 1080p h264
+    content_size:
+      min: 10000
     imdb_lookup: yes
-    list_match:
-      from:
-        - imdb_list:
-            login: '{? imdblogin.usr ?}'
-            password: '{? imdblogin.pwd ?}'
-            list: watchlist
+#    list_match:
+#      from:
+#        - imdb_list:
+#            login: '{? imdblogin.usr ?}'
+#            password: '{? imdblogin.pwd ?}'
+#            list: watchlist
+    imdb_watchlist:
+      user_id: urXXXXXXXX
+      list: watchlist
     set:
-      path: '/volume1/Downloads/Films'
+      path: '/volume2/Downloads/Films'
       content_filename: "{{ imdb_name|replace(' ', '.') }}"
       label: Films
 
@@ -105,8 +109,9 @@ tasks:
   lostfilm:
     priority: 1
     headers:
-      cookie: '{? lfc.uid ?}'
-    rss: http://www.lostfilm.tv/rssdd.xml
+      cookie: '{? lfcn.uid ?}'
+#    rss: https://old.lostfilm.tv/rssdd.xml
+    lostfilm: yes
     urlrewrite:
       lostfilm:
         regexp: 'http://lostfilm.tv/download.php\?(?P<details>.*)'
@@ -118,12 +123,12 @@ tasks:
             regexp: '[^a-zA-z0-9()]+\s'
             format: ''
 
-  Movie:
-    priority: 2
+  Movies1080p:
+    priority: 3
+#    proxy: http://200.146.245.53:8080
     inputs:
       - rss: '{? RRSUrls.url1 ?}'
       - rss: '{? RRSUrls.url2 ?}'
-      - rss: '{? RRSUrls.url3 ?}'
     template: [movies, torrents, movie-notify, email-notify]
     manipulate:
       - title:
@@ -132,10 +137,11 @@ tasks:
             format: ''
 
   Want_download:
-    priority: 3
+    priority: 4
+#    proxy: http://200.146.245.53:8080
     no_entries_ok: yes
-    rss: '{? RRSUrls.url4 ?}'
+    rss: '{? RRSUrls.url3 ?}'
     accept_all: yes
     download:
-      path: /volume1/Downloads/tfiles/
+      path: /volume2/Downloads/tfiles/
       overwrite: yes
