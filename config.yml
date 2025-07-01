@@ -1,4 +1,4 @@
-﻿variables: private/secretfile.yml
+variables: private/secretfile.yml
 web_server:
   bind: 0.0.0.0
   port: 5050
@@ -6,7 +6,8 @@ web_server:
 
 schedules:
 # Run all tasks once an hour
-  - tasks: '*'
+#  - tasks: '*'
+  - tasks: [lostfilm]
     interval:
       minutes: 30
 
@@ -16,7 +17,6 @@ templates:
       reject:
         - (s|d)ub(s|bed)?\b: {from: title}
         - (duo|tri|quadri|tetra|penta|hexa|hepta|octa|ennea|deca)logy: {from: title}
-#        - \b3-?D\b: {from: title}
         - Blu-ray: {from: title}
         - BDRemux: {from: title}
         - Remux: {from: title}
@@ -35,35 +35,35 @@ templates:
       add_paused: no
       max_connections: 30
       honor_limits: yes
- 
-  series-notify:
-    notify:
-      entries:
-        title: "Добавлена новая серия сериала: {{ tvdb_series_name }}"
-        message: "{{ tvdb_series_name|default(series_name) }} - {{ tvdb_ep_name }}{% if tvdb_ep_name|default(False) %}{% endif %} - {{ tvdb_ep_id }} [{{ quality }}]"
-        what: accepted
-        via:
-          - pushbullet:
-              url: "{% if tvdb_url %}{{ tvdb_url }}{% endif %}"
-              api_key: '{? pushbullet.apikey ?}'
 
-  movie-notify:
+#  movie-notify:
+#    notify:
+#      entries:
+#        title: "Добавлен новый фильм: {{ imdb_name }}"
+#        message: "{{ imdb_name }} [{{ quality }}]"
+#        what: accepted
+#        via:
+#          - pushbullet:
+#              url: "{% if imdb_url %}{{ imdb_url }}{% endif %}"
+#              api_key: '{? pushbullet.apikey ?}'
+  tg-notify:
     notify:
       entries:
-        title: "Добавлен новый фильм: {{ imdb_name }}"
-        message: "{{ imdb_name }} [{{ quality }}]"
-        what: accepted
+        message: |+
+           📥 Скачан сериал: {{ series_name }}. Сезон: {{ tvdb_season }}, Серия: {{tvdb_episode}}
+           Будем смотреть? 😉
         via:
-          - pushbullet:
-              url: "{% if imdb_url %}{{ imdb_url }}{% endif %}"
-              api_key: '{? pushbullet.apikey ?}'
+          - telegram:
+              bot_token: '{? tgboot.bottoken ?}'
+              parse_mode: markdown
+              recipients:
+                - chat_id: '{? tgboot.chtID ?}'
 
   email-notify:
     notify:
       task:
         title: "Добавлен новый торрент"
         template: html-downloaded.template
-#        what: accepted
         via:
           - email:
               from: '{? emailset.addrfrom ?}'
@@ -89,7 +89,7 @@ templates:
 #        - BDRip: {from: title}
     quality: 1080p h264
     content_size:
-      min: 10000
+      min: 9000
     imdb_lookup: yes
 #    list_match:
 #      from:
@@ -98,25 +98,27 @@ templates:
 #            password: '{? imdblogin.pwd ?}'
 #            list: watchlist
     imdb_watchlist:
-      user_id: urXXXXXXXX
+      user_id: ur66868441
       list: watchlist
     set:
-      path: '/volume2/Downloads/Films'
+      path: '/volume1/Downloads/Films'
       content_filename: "{{ imdb_name|replace(' ', '.') }}"
       label: Films
 
 tasks:
   lostfilm:
     priority: 1
+#    proxy: http://168.235.88.16:8080
     headers:
-      cookie: '{? lfcn.uid ?}'
-#    rss: https://old.lostfilm.tv/rssdd.xml
-    lostfilm: yes
+      cookie: '{? lfcn2.uid ?}'
+    rss:
+      url: http://insearch.site/rssdd.xml
+      ascii: yes
     urlrewrite:
       lostfilm:
-        regexp: 'http://lostfilm.tv/download.php\?(?P<details>.*)'
-        format: 'http://www.lostfilm.tv/download.php?\g<details>'
-    template: [tv, torrents, series-notify, email-notify]
+        regexp: 'https://lostfilm.tv/download.php\?(?P<details>.*)'
+        format: 'https://www.lostfilm.tv/download.php?\g<details>'
+    template: [tv, torrents, email-notify, tg-notify]
     manipulate:
       - title:
           replace:
@@ -125,7 +127,6 @@ tasks:
 
   Movies1080p:
     priority: 3
-#    proxy: http://200.146.245.53:8080
     inputs:
       - rss: '{? RRSUrls.url1 ?}'
       - rss: '{? RRSUrls.url2 ?}'
@@ -138,10 +139,9 @@ tasks:
 
   Want_download:
     priority: 4
-#    proxy: http://200.146.245.53:8080
     no_entries_ok: yes
     rss: '{? RRSUrls.url3 ?}'
     accept_all: yes
     download:
-      path: /volume2/Downloads/tfiles/
+#      path: /volume1/Downloads/tfiles/
       overwrite: yes
